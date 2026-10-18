@@ -13,13 +13,15 @@ export const DEFAULTS = { provider: 'gemini', model: '', src: 'auto', tgt: 'en',
 
 export const settings = {
   get() { return { ...DEFAULTS, ...read(K.settings, {}) }; },
-  set(patch) { const s = { ...this.get(), ...patch }; write(K.settings, s); return s; },
+  set(patch) { const old = this.get(); const s = { ...old, ...patch };
+    if ('model' in patch) s.models = { ...(patch.models || old.models || {}), [s.provider]: patch.model };
+    write(K.settings, s); return s; },
 };
 
 // API key kept in its own entry so it is never included in exports.
 export const apiKey = {
-  get() { return localStorage.getItem(K.key) || ''; },
-  set(v) { v ? localStorage.setItem(K.key, v) : localStorage.removeItem(K.key); },
+  get(provider = 'gemini') { return localStorage.getItem('pt.apiKey.' + provider) || ''; },
+  set(v, provider = 'gemini') { const k = 'pt.apiKey.' + provider; v ? localStorage.setItem(k, v) : localStorage.removeItem(k); },
 };
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);

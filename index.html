@@ -113,15 +113,19 @@
     <span></span>
   </header>
   <div class="card">
-    <label for="apiKey">Gemini API Key</label>
+    <label for="provider">供应商</label>
+    <select id="provider"></select>
+    <p class="hint" id="providerHint"></p>
+    <label for="apiKey">当前供应商 API Key</label>
     <div class="followup-row">
-      <input id="apiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="AIza…">
+      <input id="apiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="输入当前供应商的 Key">
       <button id="toggleKey" class="btn small">显示</button>
     </div>
-    <p class="hint">只保存在这台设备的浏览器里，不会上传到任何服务器（翻译时直接发送给 Google）。</p>
+    <p class="hint">只保存在这台设备的浏览器里，调用时直接发送给所选供应商；OpenRouter 是聚合服务。导出不含 Key。</p>
     <label for="model">模型</label>
     <div class="followup-row">
-      <select id="model"><option value="">先填 Key，再点「拉取」</option></select>
+      <input id="model" list="modelOptions" placeholder="拉取后选择，或手动输入模型 ID" autocomplete="off" spellcheck="false">
+      <datalist id="modelOptions"></datalist>
       <button id="fetchModels" class="btn small">拉取</button>
     </div>
     <p class="hint" id="modelHint"></p>

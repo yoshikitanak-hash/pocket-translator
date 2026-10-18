@@ -1,14 +1,13 @@
-import * as gemini from './providers/gemini.js';
+import { providers } from './providers/registry.js';
 import { LANGS, TONES, langById, buildSystem, FOLLOWUP_RULES, buildLookup, parse } from './prompts.js';
 import { settings, apiKey, history, vocab, exportData, wipeAll } from './store.js';
 
-const VERSION = '1.0.1';
-const providers = { gemini }; // future: openai, anthropic, deepseek, moonshot, zai, openrouter…
+const VERSION = '1.1.0';
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 let S = settings.get();
-const provider = () => providers[S.provider] || gemini;
+const provider = () => providers[S.provider] || providers.gemini;
 
 let job = null;      // { id, ctrl, owner:HTMLElement }
 let jobSeq = 0;
@@ -126,6 +125,7 @@ function createTurn(ask, mode) {
 
 /* ============================== streaming core ============================== */
 function updateButtons() {
+  for (const id of ['#provider', '#model', '#fetchModels', '#apiKey']) $(id).disabled = !!job || starting || !!lookupCtrl;
   for (const [btn, label] of [[$('#btnTranslate'), '翻译'], [$('#btnFix'), '帮我改'], [$('#btnFollowup'), '发送']]) {
     const owner = job && job.owner === btn;
     btn.textContent = owner ? '■ 停止' : label;
@@ -135,8 +135,8 @@ function updateButtons() {
 }
 
 async function ensureReady() {
-  const key = apiKey.get();
-  if (!key) { openView('settings'); status('请先填入 Gemini API Key', 'err'); $('#apiKey').focus(); return null; }
+  const key = apiKey.get(S.provider);
+  if (!key) { openView('settings'); status(`请先填入 ${provider().label} API Key`, 'err'); $('#apiKey').focus(); return null; }
   if (!S.model) {
     status('首次使用，正在自动选择模型…');
     try {
@@ -155,12 +155,12 @@ async function streamInto(turn, owner, key, { system, messages }) {
   const ctrl = new AbortController();
   job = { id, ctrl, owner };
   updateButtons();
-  const model = S.model;
-  turn.meta(model);
+  const model = S.model, selectedProvider = provider();
+  turn.meta(`${selectedProvider.label} · ${model}`);
   const t0 = performance.now();
   let tFirst = 0, raw = '';
   try {
-    for await (const piece of provider().stream({ key, model, system, messages, signal: ctrl.signal })) {
+    for await (const piece of selectedProvider.stream({ key, model, system, messages, signal: ctrl.signal })) {
       if (job?.id !== id) return null; // stale (should not happen, but never mix results)
       if (!tFirst) tFirst = performance.now();
       raw += piece;
@@ -198,7 +198,7 @@ async function runMain(mode, owner) {
   const key = await begin(); if (!key || job) return;
   status('');
   src.blur();
-  const params = { mode, tone: S.tone, src: S.src, tgt: S.tgt, native: S.native };
+  const params = { provider: S.provider, mode, tone: S.tone, src: S.src, tgt: S.tgt, native: S.native };
   const system = buildSystem(params);
   $('#thread').innerHTML = '';
   $('#followupBox').hidden = true;
@@ -276,6 +276,7 @@ async function openLookup({ term, context }) {
   $('#sheet').hidden = false;
   lookupCtrl?.abort();
   const ctrl = lookupCtrl = new AbortController();
+  updateButtons();
   const { system, user } = buildLookup({ term, context, native: S.native });
   let raw = '';
   try {
@@ -291,10 +292,11 @@ async function openLookup({ term, context }) {
   } catch (e) {
     if (e?.name !== 'AbortError') $('#sheetBody').innerHTML = `<span class="error-box">${esc(e?.message || e)}</span>`;
   } finally {
+    if (lookupCtrl === ctrl) { lookupCtrl = null; updateButtons(); }
     $('#sheetBody').classList.remove('pending', 'result');
   }
 }
-function closeSheet() { lookupCtrl?.abort(); lookupCtrl = null; $('#sheet').hidden = true; }
+function closeSheet() { lookupCtrl?.abort(); lookupCtrl = null; updateButtons(); $('#sheet').hidden = true; }
 $('#sheetClose').onclick = closeSheet;
 $('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
 
@@ -332,8 +334,8 @@ function restore(h) {
   if (job || starting) { status('请先停止当前生成，再打开历史记录'); return; }
   closeViews();
   src.value = h.input; autoGrow();
-  const params = { mode: h.mode, tone: h.tone, src: h.src, tgt: h.tgt, native: h.native || S.native };
-  S = settings.set({ src: params.src, tgt: params.tgt, tone: params.tone, native: params.native });
+  const params = { provider: h.provider || 'gemini', mode: h.mode, tone: h.tone, src: h.src, tgt: h.tgt, native: h.native || S.native };
+  S = settings.set({ provider: params.provider, model: h.model || '', src: params.src, tgt: params.tgt, tone: params.tone, native: params.native });
   $('#srcLang').value = S.src; $('#tgtLang').value = S.tgt; $('#native').value = S.native;
   [...$('#tones').children].forEach(c => c.setAttribute('aria-checked', c.dataset.tone === S.tone));
   thread = { system: buildSystem(params), mode: h.mode, params, messages: [{ role: 'user', text: h.input }, { role: 'model', text: h.output }], followups: [...(h.followups || [])], historyId: h.id };
@@ -382,15 +384,26 @@ async function downloadJSON(name, data) {
 }
 
 /* ============================== settings ============================== */
+fillSelect($('#provider'), Object.values(providers).map(p => [p.id, p.label]), S.provider);
 function renderSettings() {
-  $('#apiKey').value = apiKey.get();
-  const sel = $('#model');
-  if (S.model && ![...sel.options].some(o => o.value === S.model)) sel.innerHTML = `<option value="${esc(S.model)}">${esc(S.model)}</option>`;
-  sel.value = S.model;
+  $('#provider').value = S.provider;
+  $('#apiKey').type = 'password'; $('#toggleKey').textContent = '显示';
+  $('#apiKey').value = apiKey.get(S.provider);
+  $('#modelOptions').innerHTML = '';
+  $('#model').value = S.model;
   $('#native').value = S.native;
+  $('#modelHint').textContent = '';
+  $('#providerHint').textContent = S.provider === 'gemini' ? 'Gemini 已通过用户 iPhone 实测。' : '新增适配，尚未完成真实 Key / iPhone 实测；浏览器可能受跨域或地区限制。不自动切换供应商。';
   $('#version').textContent = `口袋翻译 v${VERSION} · ${provider().label}`;
 }
-$('#apiKey').addEventListener('change', e => { apiKey.set(e.target.value.trim()); status('Key 已保存在本机', 'ok'); });
+$('#provider').onchange = e => {
+  if (job || starting || lookupCtrl) { e.target.value = S.provider; return; }
+  const next = e.target.value;
+  const models = { ...(S.models || {}), [S.provider]: S.model };
+  S = settings.set({ provider: next, models, model: models[next] || '' });
+  renderSettings();
+};
+$('#apiKey').addEventListener('change', e => { apiKey.set(e.target.value.trim(), S.provider); status('当前供应商 Key 已保存在本机', 'ok'); });
 $('#toggleKey').onclick = e => {
   const i = $('#apiKey'); const show = i.type === 'password';
   i.type = show ? 'text' : 'password'; e.currentTarget.textContent = show ? '隐藏' : '显示';
@@ -398,17 +411,19 @@ $('#toggleKey').onclick = e => {
 $('#fetchModels').onclick = async () => {
   const key = $('#apiKey').value.trim();
   if (!key) { $('#modelHint').textContent = '请先填入 Key'; return; }
-  apiKey.set(key);
+  apiKey.set(key, S.provider);
+  const selected = S.provider;
   $('#modelHint').textContent = '拉取中…';
   try {
     const ms = await provider().listModels(key);
-    $('#model').innerHTML = ms.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    if (selected !== S.provider) return;
+    $('#modelOptions').innerHTML = ms.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
     const m = provider().pickDefault(ms, S.model);
     $('#model').value = m; S = settings.set({ model: m });
-    $('#modelHint').textContent = `找到 ${ms.length} 个文字模型，已选 ${m}。日常推荐 Flash 系列（快、便宜）。`;
-  } catch (e) { $('#modelHint').textContent = e.message; }
+    $('#modelHint').textContent = `找到 ${ms.length} 个文字模型，已选 ${m}。请确认选中的是支持文字生成的模型。`;
+  } catch (e) { if (selected === S.provider) $('#modelHint').textContent = e.message; }
 };
-$('#model').onchange = e => { S = settings.set({ model: e.target.value }); };
+$('#model').onchange = e => { S = settings.set({ model: e.target.value.trim() }); };
 $('#exportAll').onclick = () => downloadJSON('pocket-translator-backup.json', exportData());
 $('#wipeAll').onclick = () => {
   if (!confirm('将删除本机的 Key、设置、历史和生词本，确定？')) return;
@@ -418,7 +433,7 @@ $('#wipeAll').onclick = () => {
 /* ============================== boot ============================== */
 updateButtons();
 autoGrow();
-if (!apiKey.get()) status('首次使用：点右上角 ⚙️ 填入 Gemini API Key');
+if (!apiKey.get(S.provider)) status('首次使用：点右上角 ⚙️ 选择供应商并填入 Key');
 
 if ('serviceWorker' in navigator && window.isSecureContext) {
   navigator.serviceWorker.register('sw.js').catch(() => {});

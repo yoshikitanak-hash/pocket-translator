@@ -4,7 +4,7 @@
 
 iPhone 使用 Safari 打开在线地址，点击分享，再选择添加到主屏幕。首次使用在设置中输入自己的 Key。在线站点与本地测试页存储独立，需要重新输入 Key；历史仍保留在原测试页。
 
-个人使用的轻量翻译网页，支持 Gemini 官方 API、流式翻译、同语言修改、当前句子追问、语境解释、本地历史和词句收藏。
+个人使用的轻量翻译网页，支持 Gemini、OpenAI、Anthropic、DeepSeek 官方 API 以及 OpenRouter 聚合接口，提供流式翻译、同语言修改、当前句子追问、语境解释、本地历史和词句收藏。
 
 ## 本地运行
 
@@ -23,3 +23,9 @@ iPhone 使用 Safari 打开在线地址，点击分享，再选择添加到主�
 ## 发布范围
 
 仅发布 index.html、css、js、icons、manifest.webmanifest 和 sw.js。交接文件、对话记录、密钥、备份和本地测试资料不应上传。正式站点通过 GitHub Pages 托管，仅发布应用静态文件。
+
+## 供应商状态
+
+设置中选择供应商，各自保存 Key 与上次使用的模型。模型可以拉取，也可以手动填写准确 ID。拉取列表不保证其中每个模型均可用于当前文字接口。
+
+Gemini 已有用户 iPhone 真实调用验证。OpenAI 使用 Responses API，Anthropic 使用 Messages API，DeepSeek 与 OpenRouter 使用 Chat Completions API。新增供应商已通过模拟请求和流式协议检查，尚未完成真实 Key 与 iPhone 验证。浏览器直连可能受跨域、网络、地区及模型权限限制；不会静默切换到第三方中转。OpenRouter 本身是明确标注的聚合服务。
