@@ -1,0 +1,10 @@
+__pycache__/
+node_modules/
+.env*
+*.log
+*交接*.md
+PROJECT-STATUS.md
+prototype/
+AGENTS.md
+tests/
+package.json

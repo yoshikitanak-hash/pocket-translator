@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>口袋翻译</title>
+<meta name="description" content="轻量、自然、懂语气的个人翻译 PWA">
+<meta name="theme-color" content="#f6f6f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="口袋翻译">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ============ Main view ============ -->
+<main id="main">
+  <header class="topbar">
+    <h1>口袋翻译</h1>
+    <nav>
+      <button class="icon-btn" data-open="history" aria-label="历史">🕘</button>
+      <button class="icon-btn" data-open="vocab" aria-label="生词本">⭐</button>
+      <button class="icon-btn" data-open="settings" aria-label="设置">⚙️</button>
+    </nav>
+  </header>
+
+  <section class="card">
+    <div class="lang-row">
+      <select id="srcLang" aria-label="原文语言"></select>
+      <button id="swap" class="icon-btn" aria-label="交换语言">⇄</button>
+      <select id="tgtLang" aria-label="目标语言"></select>
+    </div>
+    <div class="input-wrap">
+      <textarea id="src" rows="3" placeholder="输入或粘贴要翻译 / 修改的文字" enterkeyhint="done"></textarea>
+      <button id="clear" class="clear-btn" aria-label="清空" hidden>✕</button>
+    </div>
+    <div class="chips" id="tones" role="radiogroup" aria-label="语气"></div>
+    <div class="actions">
+      <button id="btnTranslate" class="btn primary">翻译</button>
+      <button id="btnFix" class="btn">帮我改</button>
+    </div>
+  </section>
+
+  <div id="thread"></div>
+
+  <section id="followupBox" class="card followup" hidden>
+    <div class="followup-row">
+      <input id="followup" type="text" placeholder="追问这一条：再口语一点 / 这个词什么意思…" enterkeyhint="send" autocomplete="off">
+      <button id="btnFollowup" class="btn primary small">发送</button>
+    </div>
+    <div class="quick">
+      <button data-q="再口语、自然一点">更口语</button>
+      <button data-q="再简短一点">更简短</button>
+      <button data-q="再正式、礼貌一点">更正式</button>
+      <button data-q="换一种说法">换个说法</button>
+    </div>
+  </section>
+
+  <p id="status" class="status" aria-live="polite"></p>
+</main>
+
+<!-- ============ Selection lookup bar ============ -->
+<div id="selBar" class="sel-bar" hidden>
+  <button id="btnLookup" class="btn primary small">🔍 解释「<span id="selText"></span>」</button>
+</div>
+
+<!-- ============ Lookup sheet ============ -->
+<div id="sheet" class="sheet-backdrop" hidden>
+  <div class="sheet" role="dialog" aria-modal="true">
+    <div class="sheet-head">
+      <strong id="sheetTerm"></strong>
+      <button id="sheetClose" class="icon-btn" aria-label="关闭">✕</button>
+    </div>
+    <div id="sheetBody" class="sheet-body"></div>
+    <div class="actions">
+      <button id="btnStar" class="btn primary" disabled>⭐ 收藏到生词本</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ History view ============ -->
+<section id="view-history" class="view" hidden>
+  <header class="topbar">
+    <button class="link-btn" data-close>‹ 返回</button>
+    <h2>历史</h2>
+    <button class="link-btn" id="historyMenu">导出</button>
+  </header>
+  <ul id="historyList" class="list"></ul>
+  <div class="view-foot"><button class="btn danger small" id="historyClear">清空历史</button></div>
+</section>
+
+<!-- ============ Vocab view ============ -->
+<section id="view-vocab" class="view" hidden>
+  <header class="topbar">
+    <button class="link-btn" data-close>‹ 返回</button>
+    <h2>生词本</h2>
+    <button class="link-btn" id="vocabExport">导出</button>
+  </header>
+  <p class="hint">在翻译结果里选中词句，点底部「🔍 解释」，再点 ⭐ 收藏。</p>
+  <ul id="vocabList" class="list"></ul>
+</section>
+
+<!-- ============ Settings view ============ -->
+<section id="view-settings" class="view" hidden>
+  <header class="topbar">
+    <button class="link-btn" data-close>‹ 返回</button>
+    <h2>设置</h2>
+    <span></span>
+  </header>
+  <div class="card">
+    <label for="apiKey">Gemini API Key</label>
+    <div class="followup-row">
+      <input id="apiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="AIza…">
+      <button id="toggleKey" class="btn small">显示</button>
+    </div>
+    <p class="hint">只保存在这台设备的浏览器里，不会上传到任何服务器（翻译时直接发送给 Google）。</p>
+    <label for="model">模型</label>
+    <div class="followup-row">
+      <select id="model"><option value="">先填 Key，再点「拉取」</option></select>
+      <button id="fetchModels" class="btn small">拉取</button>
+    </div>
+    <p class="hint" id="modelHint"></p>
+  </div>
+  <div class="card">
+    <label for="native">说明文字使用的语言</label>
+    <select id="native"></select>
+  </div>
+  <div class="card">
+    <button class="btn" id="exportAll">导出全部数据（历史 + 生词本）</button>
+    <button class="btn danger" id="wipeAll" style="margin-top:8px">清除全部数据（含 Key）</button>
+    <p class="hint" id="version"></p>
+  </div>
+</section>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
+
