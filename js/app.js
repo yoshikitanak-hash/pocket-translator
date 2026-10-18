@@ -2,7 +2,7 @@ import { providers } from './providers/registry.js';
 import { LANGS, TONES, langById, buildSystem, FOLLOWUP_RULES, buildLookup, parse } from './prompts.js';
 import { settings, apiKey, history, vocab, exportData, wipeAll } from './store.js';
 
-const VERSION = '1.1.4';
+const VERSION = '1.1.5';
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -444,21 +444,20 @@ if (!apiKey.get(S.provider)) status('首次使用：点右上角 ⚙️ 选择�
 if ('serviceWorker' in navigator && window.isSecureContext) {
   navigator.serviceWorker.register('sw.js').then(reg => {
     const offer = () => {
-      if (!reg.waiting || document.querySelector('#appUpdate')) return;
+      if (document.querySelector('#appUpdate')) return;
       const b = document.createElement('button'); b.id = 'appUpdate'; b.className = 'btn';
-      b.textContent = '新版本已就绪，点此更新（保留 Key 和历史）';
-      b.onclick = () => { reg.waiting?.postMessage({ type: 'ACTIVATE_UPDATE' }); };
+      b.textContent = '新版本已就绪，点此刷新（保留 Key 和历史）';
+      b.onclick = () => {
+        if (job || starting || lookupCtrl) { status('请等生成结束或先停止，再更新'); return; }
+        location.reload();
+      };
       document.querySelector('#main').prepend(b);
     };
-    offer();
     reg.addEventListener('updatefound', () => {
       const w = reg.installing;
-      w?.addEventListener('statechange', () => { if (w.state === 'installed') offer(); });
+      w?.addEventListener('statechange', () => { if (w.state === 'activated') offer(); });
     });
-    let reloading = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (reloading) return; reloading = true; location.reload();
-    });
+    navigator.serviceWorker.addEventListener('controllerchange', offer);
     reg.update().catch(() => {});
   }).catch(() => {});
 }
