@@ -122,7 +122,9 @@
       <button id="toggleKey" class="btn small">显示</button>
     </div>
     <p class="hint">只保存在这台设备的浏览器里，调用时直接发送给所选供应商；OpenRouter 是聚合服务。导出不含 Key。</p>
-    <label for="model">模型</label>
+    <label for="modelPicker">模型列表</label>
+    <select id="modelPicker"><option value="">先拉取，再明确选择一个模型</option></select>
+    <label for="model">模型 ID（也可手动填写）</label>
     <div class="followup-row">
       <input id="model" list="modelOptions" placeholder="拉取后选择，或手动输入模型 ID" autocomplete="off" spellcheck="false">
       <datalist id="modelOptions"></datalist>

@@ -2,7 +2,7 @@ import { providers } from './providers/registry.js';
 import { LANGS, TONES, langById, buildSystem, FOLLOWUP_RULES, buildLookup, parse } from './prompts.js';
 import { settings, apiKey, history, vocab, exportData, wipeAll } from './store.js';
 
-const VERSION = '1.1.0';
+const VERSION = '1.1.1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -125,7 +125,7 @@ function createTurn(ask, mode) {
 
 /* ============================== streaming core ============================== */
 function updateButtons() {
-  for (const id of ['#provider', '#model', '#fetchModels', '#apiKey']) $(id).disabled = !!job || starting || !!lookupCtrl;
+  for (const id of ['#provider', '#modelPicker', '#model', '#fetchModels', '#apiKey']) $(id).disabled = !!job || starting || !!lookupCtrl;
   for (const [btn, label] of [[$('#btnTranslate'), '翻译'], [$('#btnFix'), '帮我改'], [$('#btnFollowup'), '发送']]) {
     const owner = job && job.owner === btn;
     btn.textContent = owner ? '■ 停止' : label;
@@ -142,7 +142,7 @@ async function ensureReady() {
     try {
       const ms = await provider().listModels(key);
       const m = provider().pickDefault(ms, '');
-      if (!m) throw new Error('没有找到可用的文字模型');
+      if (!m) { openView('settings'); throw new Error(ms.length ? '请在设置拉取模型后，从完整列表选择，或手动填写模型 ID' : '接口没有返回可用模型，可手动填写模型 ID'); }
       S = settings.set({ model: m });
       status('');
     } catch (e) { status(e.message, 'err'); return null; }
@@ -390,10 +390,13 @@ function renderSettings() {
   $('#apiKey').type = 'password'; $('#toggleKey').textContent = '显示';
   $('#apiKey').value = apiKey.get(S.provider);
   $('#modelOptions').innerHTML = '';
+  fillSelect($('#modelPicker'), [['', '拉取后选择模型'], ...(S.model ? [[S.model, S.model]] : [])], S.model);
   $('#model').value = S.model;
   $('#native').value = S.native;
   $('#modelHint').textContent = '';
   $('#providerHint').textContent = S.provider === 'gemini' ? 'Gemini 已通过用户 iPhone 实测。' : '新增适配，尚未完成真实 Key / iPhone 实测；浏览器可能受跨域或地区限制。不自动切换供应商。';
+  $('#providerHint').textContent += provider().base ? ` 接口：${provider().base}。` : '';
+  if (['moonshot','moonshot_global','zai','zhipu'].includes(S.provider)) $('#providerHint').textContent += '请选择 Key 所属平台。本入口使用常规 API，不使用 Coding Plan 专用接口。';
   $('#version').textContent = `口袋翻译 v${VERSION} · ${provider().label}`;
 }
 $('#provider').onchange = e => {
@@ -419,11 +422,13 @@ $('#fetchModels').onclick = async () => {
     if (selected !== S.provider) return;
     $('#modelOptions').innerHTML = ms.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
     const m = provider().pickDefault(ms, S.model);
+    fillSelect($('#modelPicker'), [['', '请选择模型，不自动指定'], ...ms.map(n => [n, n])], m);
     $('#model').value = m; S = settings.set({ model: m });
-    $('#modelHint').textContent = `找到 ${ms.length} 个文字模型，已选 ${m}。请确认选中的是支持文字生成的模型。`;
+    $('#modelHint').textContent = `找到 ${ms.length} 个文字模型，${m ? '当前模型：' + m : '请从完整列表选择模型'}。`;
   } catch (e) { if (selected === S.provider) $('#modelHint').textContent = e.message; }
 };
-$('#model').onchange = e => { S = settings.set({ model: e.target.value.trim() }); };
+$('#model').onchange = e => { S = settings.set({ model: e.target.value.trim() }); $('#modelPicker').value = S.model; };
+$('#modelPicker').onchange = e => { S = settings.set({ model: e.target.value }); $('#model').value = S.model; };
 $('#exportAll').onclick = () => downloadJSON('pocket-translator-backup.json', exportData());
 $('#wipeAll').onclick = () => {
   if (!confirm('将删除本机的 Key、设置、历史和生词本，确定？')) return;

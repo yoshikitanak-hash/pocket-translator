@@ -39,9 +39,9 @@ function adapter(id,label,base,type){
  return {id,label,base,
   async listModels(key){
    const r=await request(base+'/models',{headers:headers(key)}),j=await r.json();
-   return (j.data||[]).filter(m=>!m.architecture?.output_modalities||m.architecture.output_modalities.includes('text')).map(m=>m.id).filter(n=>n&&!/embedding|whisper|tts|dall-e|image|transcri|realtime|moderation|audio/i.test(n)).sort().reverse();
+   return (j.data||[]).filter(m=>!m.architecture?.output_modalities||m.architecture.output_modalities.includes('text')).map(m=>m.id).filter(n=>n&&!/embedding|whisper|tts|dall-e|image|transcri|realtime|moderation|audio/i.test(n)).sort();
   },
-  pickDefault(models,current){return models.includes(current)?current:models[0]||'';},
+  pickDefault(models,current){return models.includes(current)?current:'';},
   async *stream({key,model,system,messages,signal}){
    const turns=messages.map(m=>({role:m.role==='model'?'assistant':'user',content:m.text}));
    let body,path;
@@ -80,5 +80,9 @@ export const providers={gemini,
  openai:adapter('openai','OpenAI','https://api.openai.com/v1','responses'),
  anthropic:adapter('anthropic','Anthropic Claude','https://api.anthropic.com/v1','anthropic'),
  deepseek:adapter('deepseek','DeepSeek','https://api.deepseek.com','chat'),
+ moonshot:adapter('moonshot','Moonshot / Kimi（国内）','https://api.moonshot.cn/v1','chat'),
+ moonshot_global:adapter('moonshot_global','Moonshot / Kimi（国际）','https://api.moonshot.ai/v1','chat'),
+ zai:adapter('zai','Z.ai（国际）','https://api.z.ai/api/paas/v4','chat'),
+ zhipu:adapter('zhipu','智谱 BigModel（国内）','https://open.bigmodel.cn/api/paas/v4','chat'),
  openrouter:adapter('openrouter','OpenRouter（聚合服务）','https://openrouter.ai/api/v1','chat'),
 };
