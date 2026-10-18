@@ -33,3 +33,5 @@ Gemini 已有用户 iPhone 真实调用验证。OpenAI 使用 Responses API，An
 新增 Moonshot/Kimi 国内、国际接口及 Z.ai 国际、智谱 BigModel 国内常规 API 接口，各入口独立保存 Key。无需借助 OpenRouter。新增入口尚待真实 Key 与手机跨域实测；不使用 Coding Plan 专用接口。模型列表提供完整下拉选择，新增供应商不再自动指定第一个模型。
 
 2026-10-18 用户反馈 Z.ai 和智谱国内直连翻译失败。同一网页 Origin 的无密钥 OPTIONS 检查中，两家模型列表预检含跨域允许头，chat/completions 的 POST 预检缺少允许头；DeepSeek 对照正常。网页直连存在限制，模型拉取成功不等同翻译成功。不自动绕过，不部署公共中转；GLM 保留官方 Z.ai / 智谱路线，后续考虑用户控制的后端连接官方 API，不要求使用 OpenRouter。
+
+后续排查发现，Z.ai 与智谱的 chat/completions 地址末尾添加斜线后，POST 预检返回正确跨域头。v1.1.4 已使用此路径，并用无效测试 Key 验证可返回带跨域头的 401；有效 Key 真实翻译尚待验证。此前不能直连的结论仅适用于未带末尾斜线的预检路径。

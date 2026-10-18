@@ -14,7 +14,7 @@ function failure(status){
 async function request(url,options){
  let r;
  try{r=await fetch(url,options);}catch(e){if(e.name==='AbortError')throw e;
-  if (/^https:\/\/(api\.z\.ai|open\.bigmodel\.cn)\//.test(url)) throw new ProviderError('network','智谱 / Z.ai 网页直连失败：已观察到翻译接口跨域预检缺少允许响应头，模型列表可用也不代表翻译可用。官方入口和 Key 保持不变；网页端可能需要由你控制的后端连接官方 API。不会自动改走其他供应商。');
+  if (/^https:\/\/(api\.z\.ai|open\.bigmodel\.cn)\//.test(url)) throw new ProviderError('network','智谱 / Z.ai 网页连接失败：已使用兼容跨域预检的接口路径，请检查网络或稍后重试。模型列表可用不等于翻译已通过；不会自动更换供应商。');
   throw new ProviderError('network','无法直连供应商：可能是网络、地区或浏览器跨域限制。不会自动改走中转。');}
  if(!r.ok)throw failure(r.status);
  return r;
@@ -50,6 +50,8 @@ function adapter(id,label,base,type){
    if(type==='responses'){path='/responses';body={model,instructions:system,input:turns,stream:true,store:false};}
    else if(type==='anthropic'){path='/messages';body={model,system,messages:turns,max_tokens:8192,stream:true};}
    else{path='/chat/completions';body={model,messages:[{role:'system',content:system},...turns],stream:true};}
+   // These gateways expose CORS preflight on the trailing-slash route.
+   if (id === 'zai' || id === 'zhipu') path += '/';
    const r=await request(base+path,{method:'POST',headers:headers(key),body:JSON.stringify(body),signal});
    let got=false,complete=false;
    try{

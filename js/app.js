@@ -2,7 +2,7 @@ import { providers } from './providers/registry.js';
 import { LANGS, TONES, langById, buildSystem, FOLLOWUP_RULES, buildLookup, parse } from './prompts.js';
 import { settings, apiKey, history, vocab, exportData, wipeAll } from './store.js';
 
-const VERSION = '1.1.3';
+const VERSION = '1.1.4';
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -397,7 +397,7 @@ function renderSettings() {
   $('#providerHint').textContent = S.provider === 'gemini' ? 'Gemini 已通过用户 iPhone 实测。' : '新增适配，尚未完成真实 Key / iPhone 实测；浏览器可能受跨域或地区限制。不自动切换供应商。';
   $('#providerHint').textContent += provider().base ? ` 接口：${provider().base}。` : '';
   if (['moonshot','moonshot_global','zai','zhipu'].includes(S.provider)) $('#providerHint').textContent += '请选择 Key 所属平台。本入口使用常规 API，不使用 Coding Plan 专用接口。';
-  if (['zai','zhipu'].includes(S.provider)) $('#providerHint').textContent += ' 实测反馈：网页直连翻译失败；接口预检缺少跨域允许响应头。模型列表可拉取不代表可翻译。保留官方入口，不自动更换供应商；需要进一步验证自控后端方案。';
+  if (['zai','zhipu'].includes(S.provider)) $('#providerHint').textContent += ' 已修正官方接口路径的跨域预检差异，仍需用有效 Key 验证翻译；不自动更换供应商。';
   $('#version').textContent = `口袋翻译 v${VERSION} · ${provider().label}`;
 }
 $('#provider').onchange = e => {
@@ -442,5 +442,23 @@ autoGrow();
 if (!apiKey.get(S.provider)) status('首次使用：点右上角 ⚙️ 选择供应商并填入 Key');
 
 if ('serviceWorker' in navigator && window.isSecureContext) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    const offer = () => {
+      if (!reg.waiting || document.querySelector('#appUpdate')) return;
+      const b = document.createElement('button'); b.id = 'appUpdate'; b.className = 'btn';
+      b.textContent = '新版本已就绪，点此更新（保留 Key 和历史）';
+      b.onclick = () => { reg.waiting?.postMessage({ type: 'ACTIVATE_UPDATE' }); };
+      document.querySelector('#main').prepend(b);
+    };
+    offer();
+    reg.addEventListener('updatefound', () => {
+      const w = reg.installing;
+      w?.addEventListener('statechange', () => { if (w.state === 'installed') offer(); });
+    });
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloading) return; reloading = true; location.reload();
+    });
+    reg.update().catch(() => {});
+  }).catch(() => {});
 }
