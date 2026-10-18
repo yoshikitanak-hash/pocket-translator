@@ -2,7 +2,7 @@ import { providers } from './providers/registry.js';
 import { LANGS, TONES, langById, buildSystem, FOLLOWUP_RULES, buildLookup, parse } from './prompts.js';
 import { settings, apiKey, history, vocab, exportData, wipeAll } from './store.js';
 
-const VERSION = '1.1.1';
+const VERSION = '1.1.2';
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -397,6 +397,7 @@ function renderSettings() {
   $('#providerHint').textContent = S.provider === 'gemini' ? 'Gemini 已通过用户 iPhone 实测。' : '新增适配，尚未完成真实 Key / iPhone 实测；浏览器可能受跨域或地区限制。不自动切换供应商。';
   $('#providerHint').textContent += provider().base ? ` 接口：${provider().base}。` : '';
   if (['moonshot','moonshot_global','zai','zhipu'].includes(S.provider)) $('#providerHint').textContent += '请选择 Key 所属平台。本入口使用常规 API，不使用 Coding Plan 专用接口。';
+  if (['zai','zhipu'].includes(S.provider)) $('#providerHint').textContent += ' 实测反馈：网页直连翻译失败；接口预检缺少跨域允许响应头。模型列表可拉取不代表可翻译，可自行选择 OpenRouter 的 GLM 或其他供应商。';
   $('#version').textContent = `口袋翻译 v${VERSION} · ${provider().label}`;
 }
 $('#provider').onchange = e => {

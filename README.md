@@ -31,3 +31,5 @@ iPhone 使用 Safari 打开在线地址，点击分享，再选择添加到主�
 Gemini 已有用户 iPhone 真实调用验证。OpenAI 使用 Responses API，Anthropic 使用 Messages API，DeepSeek 与 OpenRouter 使用 Chat Completions API。新增供应商已通过模拟请求和流式协议检查，尚未完成真实 Key 与 iPhone 验证。浏览器直连可能受跨域、网络、地区及模型权限限制；不会静默切换到第三方中转。OpenRouter 本身是明确标注的聚合服务。
 
 新增 Moonshot/Kimi 国内、国际接口及 Z.ai 国际、智谱 BigModel 国内常规 API 接口，各入口独立保存 Key。无需借助 OpenRouter。新增入口尚待真实 Key 与手机跨域实测；不使用 Coding Plan 专用接口。模型列表提供完整下拉选择，新增供应商不再自动指定第一个模型。
+
+2026-10-18 用户反馈 Z.ai 和智谱国内直连翻译失败。同一网页 Origin 的无密钥 OPTIONS 检查中，两家模型列表预检含跨域允许头，chat/completions 的 POST 预检缺少允许头；DeepSeek 对照正常。网页直连存在限制，模型拉取成功不等同翻译成功。不自动绕过，不部署公共中转；需要 GLM 时可由用户明确选择 OpenRouter。
