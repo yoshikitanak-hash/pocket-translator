@@ -14,7 +14,7 @@ function failure(status){
 async function request(url,options){
  let r;
  try{r=await fetch(url,options);}catch(e){if(e.name==='AbortError')throw e;
-  if (/^https:\/\/(api\.z\.ai|open\.bigmodel\.cn)\//.test(url)) throw new ProviderError('network','智谱 / Z.ai 网页直连失败：已观察到翻译接口跨域预检缺少允许响应头，模型列表可用也不代表翻译可用。可自行切换 OpenRouter 选择 GLM，或使用其他已通过的供应商；不会自动中转。');
+  if (/^https:\/\/(api\.z\.ai|open\.bigmodel\.cn)\//.test(url)) throw new ProviderError('network','智谱 / Z.ai 网页直连失败：已观察到翻译接口跨域预检缺少允许响应头，模型列表可用也不代表翻译可用。官方入口和 Key 保持不变；网页端可能需要由你控制的后端连接官方 API。不会自动改走其他供应商。');
   throw new ProviderError('network','无法直连供应商：可能是网络、地区或浏览器跨域限制。不会自动改走中转。');}
  if(!r.ok)throw failure(r.status);
  return r;
